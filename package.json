@@ -1,0 +1,23 @@
+{
+  "name": "automation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "automation": "./src/cli.js"
+  },
+  "scripts": {
+    "playwright:install": "playwright install chromium",
+    "ustock:dunamu": "node src/cli.js ustock quote 두나무",
+    "ustock:dunamu:send": "node src/cli.js ustock quote 두나무 --send"
+  },
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.7",
+    "playwright": "^1.52.0"
+  }
+}
