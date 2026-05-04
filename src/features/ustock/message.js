@@ -1,5 +1,6 @@
 import {
   formatInteger,
+  formatLargeKrw,
   formatManWon,
   formatShortDate,
   formatShortKrw,
@@ -11,15 +12,34 @@ import {
 const DIVIDER = '━━━━━━━━━━━━━━━━━━━━';
 
 export function formatUstockReport({ stock, news, today }) {
-  const latestQuote = stock.dailyQuotes[0] || createQuoteFromTrades(stock);
+  const todayTrades = stock.trades.filter((trade) => trade.date === today);
+  const latestDailyQuote = stock.dailyQuotes[0];
+
+  if (todayTrades.length > 0) {
+    return formatTradingDayReport({
+      stock,
+      latestQuote: createTodayQuote(stock, todayTrades, today),
+      trades: todayTrades.slice(0, 5),
+      news: news.slice(0, 3)
+    });
+  }
+
+  if (latestDailyQuote?.date === today) {
+    return formatTradingDayReport({
+      stock,
+      latestQuote: latestDailyQuote,
+      trades: todayTrades.slice(0, 5),
+      news: news.slice(0, 3)
+    });
+  }
+
+  const latestQuote = latestDailyQuote || createQuoteFromTrades(stock);
 
   if (!latestQuote) {
     throw new Error(`${stock.stockName} 체결내역을 찾지 못했습니다.`);
   }
 
-  const isTradingDay = latestQuote.date === today;
-
-  if (!isTradingDay) {
+  if (latestQuote.date !== today) {
     return formatNonTradingDayReport({
       stock,
       latestQuote,
@@ -40,12 +60,19 @@ function formatTradingDayReport({ stock, latestQuote, trades, news }) {
   const lines = [
     `📊 ${stock.stockName} 레포트 - ${formatShortDate(latestQuote.date)}`,
     DIVIDER,
-    `• 현재가: ${formatWon(latestQuote.price)} (${formatChangeRate(latestQuote.rate, latestQuote.change)}, ${formatSignedWon(latestQuote.change)})`,
+    `• 현재가: ${formatWon(latestQuote.price)} (${formatChangeRate(latestQuote.rate, latestQuote.change)}, ${formatSignedWon(latestQuote.change)})`
+  ];
+
+  if (stock.totalIssuedShares) {
+    lines.push(`• 시가총액: ${formatLargeKrw(latestQuote.price * stock.totalIssuedShares)}`);
+  }
+
+  lines.push(
     `• 거래량: ${formatInteger(latestQuote.volume)}주`,
     `• 거래대금: ${formatShortKrw(tradeAmount)}`,
     '',
     '[최근 체결 내역]'
-  ];
+  );
 
   if (trades.length === 0) {
     lines.push('• 체결 내역 없음');
@@ -92,6 +119,19 @@ function createQuoteFromTrades(stock) {
 
   return {
     date: latestTrade.date,
+    price: stock.summary?.price || latestTrade.price,
+    rate: stock.summary?.rate || '0%',
+    change: stock.summary?.change || 0,
+    volume: stock.summary?.volume || visibleTradeVolume
+  };
+}
+
+function createTodayQuote(stock, todayTrades, today) {
+  const latestTrade = todayTrades[0];
+  const visibleTradeVolume = todayTrades.reduce((sum, trade) => sum + trade.quantity, 0);
+
+  return {
+    date: today,
     price: stock.summary?.price || latestTrade.price,
     rate: stock.summary?.rate || '0%',
     change: stock.summary?.change || 0,

@@ -40,6 +40,12 @@ export async function fetchRenderedPage(url, options = {}) {
       timeout: options.timeout || 30_000
     });
 
+    if (options.clickText) {
+      await page
+        .getByText(options.clickText, { exact: true })
+        .click({ timeout: options.clickTimeout || 10_000 });
+    }
+
     if (options.waitForText) {
       await page
         .waitForFunction(

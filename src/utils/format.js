@@ -56,6 +56,26 @@ export function formatShortKrw(value) {
   return `${formatInteger(amount)}원`;
 }
 
+export function formatLargeKrw(value) {
+  const amount = Number(value || 0);
+  const jo = Math.floor(amount / 1_000_000_000_000);
+  const eok = Math.floor((amount % 1_000_000_000_000) / 100_000_000);
+
+  if (jo > 0 && eok > 0) {
+    return `약 ${formatInteger(jo)}조 ${formatInteger(eok)}억 원`;
+  }
+
+  if (jo > 0) {
+    return `약 ${formatInteger(jo)}조 원`;
+  }
+
+  if (eok > 0) {
+    return `약 ${formatInteger(eok)}억 원`;
+  }
+
+  return formatShortKrw(amount);
+}
+
 export function formatManWon(value) {
   const amount = Number(value || 0);
 
@@ -89,4 +109,3 @@ export function formatShortDate(fullDate) {
 function trimFixed(value, digits) {
   return value.toFixed(digits).replace(/\.0$/, '');
 }
-

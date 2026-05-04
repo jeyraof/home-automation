@@ -39,12 +39,15 @@ export async function resolveUstockStock(stockName) {
   }
 
   const candidates = [];
+  const discoveryErrors = [];
+  const candidateErrors = [];
 
   for (const sourceUrl of USTOCK_SEARCH_SOURCES) {
     try {
       const source = await fetchRenderedPage(sourceUrl);
       candidates.push(...extractStockCandidates(source.html, source.url, query, true));
-    } catch {
+    } catch (error) {
+      discoveryErrors.push(formatDiscoveryError(sourceUrl, error));
       // Source pages are best-effort. Naver search fallback below still runs.
     }
   }
@@ -53,7 +56,8 @@ export async function resolveUstockStock(stockName) {
     const searchUrl = `https://search.naver.com/search.naver?query=${encodeURIComponent(`${query} Npay 비상장`)}`;
     const search = await fetchRenderedPage(searchUrl);
     candidates.push(...extractStockCandidates(search.html, search.url, query, false));
-  } catch {
+  } catch (error) {
+    discoveryErrors.push(formatDiscoveryError('https://search.naver.com', error));
     // Search fallback is best-effort. Candidate validation below handles empty results.
   }
 
@@ -73,12 +77,15 @@ export async function resolveUstockStock(stockName) {
         saveCachedUstockStock(resolved);
         return resolved;
       }
-    } catch {
+    } catch (error) {
+      candidateErrors.push(formatDiscoveryError(candidate.url, error));
       // Invalid or unrelated search results are ignored.
     }
   }
 
-  throw new Error(`Npay 비상장에서 '${stockName}' 종목을 찾지 못했습니다.`);
+  const errorHint = [...discoveryErrors, ...candidateErrors].find(Boolean);
+  const suffix = errorHint ? ` 원인 후보: ${errorHint}` : '';
+  throw new Error(`Npay 비상장에서 '${stockName}' 종목을 찾지 못했습니다.${suffix}`);
 }
 
 async function fetchAndValidateCandidate(url, query) {
@@ -214,4 +221,10 @@ function safeDecodeURIComponent(value) {
   } catch {
     return value;
   }
+}
+
+function formatDiscoveryError(source, error) {
+  const message = error?.message || String(error);
+  const firstLine = message.split('\n').map((line) => line.trim()).find(Boolean) || message;
+  return `${source}: ${firstLine}`;
 }

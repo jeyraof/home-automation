@@ -17,6 +17,13 @@ export function parseQuotePage(html) {
 export function parseInvestmentPage(html) {
   const $ = loadBody(getHtml(html));
   const lines = getLines(html, $);
+  return {
+    news: parseInvestmentNews(lines),
+    stockStatus: parseStockStatus(lines)
+  };
+}
+
+function parseInvestmentNews(lines) {
   const start = lines.findIndex((line) => line === '뉴스/공시' || line.includes('뉴스/공시'));
 
   if (start < 0) {
@@ -33,10 +40,22 @@ export function parseInvestmentPage(html) {
 
   for (let index = 0; index < segment.length; index += 1) {
     const title = segment[index];
+    const source = segment[index + 1];
+    const date = segment[index + 2];
     const sourceDate = segment[index + 1];
     const separatedSource = segment[index + 1];
     const separator = segment[index + 2];
     const separatedDate = segment[index + 3];
+
+    if (title && source && /^\d{4}\.\d{2}\.\d{2}$/.test(date)) {
+      news.push({
+        title,
+        source,
+        date
+      });
+      index += 2;
+      continue;
+    }
 
     const compactMatch = sourceDate?.match(/^(.+?)\s+(\d{4}\.\d{2}\.\d{2})$/);
     if (title && compactMatch) {
@@ -60,6 +79,19 @@ export function parseInvestmentPage(html) {
   }
 
   return news;
+}
+
+function parseStockStatus(lines) {
+  const totalIssuedShares = parseShares(readValueAfterLabel(lines, '총발행주식'));
+
+  return {
+    totalIssuedShares
+  };
+}
+
+function parseShares(value) {
+  const match = normalizeSpaces(value).match(/^([\d,]+)\s*주/);
+  return match ? parseInteger(match[1]) : 0;
 }
 
 export function parseStockIdentity(html) {

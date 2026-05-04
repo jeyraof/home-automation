@@ -8,21 +8,29 @@ export async function buildUstockQuoteReport(stockName) {
   const resolved = await resolveUstockStock(stockName);
   const quote = parseQuotePage(resolved);
   const canonicalUrl = resolved.url;
-  const investmentUrl = createInvestmentUrl(canonicalUrl);
 
   let news = [];
+  let stockStatus = {};
   try {
-    const investment = await fetchRenderedPage(investmentUrl, { waitForText: '뉴스/공시' });
-    news = parseInvestmentPage(investment);
+    const investment = await fetchRenderedPage(canonicalUrl, {
+      clickText: '투자정보',
+      waitForText: '뉴스/공시',
+      settleMs: 1_000
+    });
+    const investmentData = parseInvestmentPage(investment);
+    news = investmentData.news;
+    stockStatus = investmentData.stockStatus;
   } catch {
     news = [];
+    stockStatus = {};
   }
 
   const stock = {
     ...quote,
     stockName: quote.stockName || resolved.stockName || stockName,
     code: quote.code || resolved.code,
-    url: canonicalUrl
+    url: canonicalUrl,
+    totalIssuedShares: stockStatus.totalIssuedShares || 0
   };
 
   return {
@@ -34,10 +42,4 @@ export async function buildUstockQuoteReport(stockName) {
     stock,
     news
   };
-}
-
-function createInvestmentUrl(url) {
-  const parsed = new URL(url);
-  parsed.searchParams.set('selectedTab', 'invest_info');
-  return parsed.toString();
 }
