@@ -17,13 +17,15 @@ export function parseQuotePage(html) {
 export function parseInvestmentPage(html) {
   const $ = loadBody(getHtml(html));
   const lines = getLines(html, $);
+  const newsLinks = extractNewsLinks($, getUrl(html));
+
   return {
-    news: parseInvestmentNews(lines),
+    news: parseInvestmentNews(lines, newsLinks),
     stockStatus: parseStockStatus(lines)
   };
 }
 
-function parseInvestmentNews(lines) {
+function parseInvestmentNews(lines, newsLinks) {
   const start = lines.findIndex((line) => line === '뉴스/공시' || line.includes('뉴스/공시'));
 
   if (start < 0) {
@@ -51,7 +53,8 @@ function parseInvestmentNews(lines) {
       news.push({
         title,
         source,
-        date
+        date,
+        url: findNewsUrl(newsLinks, title)
       });
       index += 2;
       continue;
@@ -62,7 +65,8 @@ function parseInvestmentNews(lines) {
       news.push({
         title,
         source: compactMatch[1],
-        date: compactMatch[2]
+        date: compactMatch[2],
+        url: findNewsUrl(newsLinks, title)
       });
       index += 1;
       continue;
@@ -72,7 +76,8 @@ function parseInvestmentNews(lines) {
       news.push({
         title,
         source: separatedSource,
-        date: separatedDate
+        date: separatedDate,
+        url: findNewsUrl(newsLinks, title)
       });
       index += 3;
     }
@@ -92,6 +97,47 @@ function parseStockStatus(lines) {
 function parseShares(value) {
   const match = normalizeSpaces(value).match(/^([\d,]+)\s*주/);
   return match ? parseInteger(match[1]) : 0;
+}
+
+function extractNewsLinks($, baseUrl) {
+  const links = [];
+
+  $('a[href]').each((_, element) => {
+    const title = normalizeSpaces($(element).text());
+    const href = $(element).attr('href');
+    const url = normalizeLinkUrl(href, baseUrl);
+
+    if (!title || !url) {
+      return;
+    }
+
+    links.push({
+      title,
+      url
+    });
+  });
+
+  return links;
+}
+
+function findNewsUrl(links, title) {
+  const normalizedTitle = normalizeSpaces(title);
+  const exact = links.find((link) => link.title === normalizedTitle);
+
+  if (exact) {
+    return exact.url;
+  }
+
+  const partial = links.find((link) => link.title.includes(normalizedTitle) || normalizedTitle.includes(link.title));
+  return partial?.url || '';
+}
+
+function normalizeLinkUrl(href, baseUrl) {
+  try {
+    return new URL(href, baseUrl || 'https://ustock.naver.com').toString();
+  } catch {
+    return '';
+  }
 }
 
 export function parseStockIdentity(html) {
@@ -183,6 +229,10 @@ function loadBody(html) {
 
 function getHtml(input) {
   return typeof input === 'string' ? input : input.html;
+}
+
+function getUrl(input) {
+  return typeof input === 'object' ? input.url : '';
 }
 
 function getText(input, $) {

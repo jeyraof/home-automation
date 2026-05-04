@@ -58,20 +58,20 @@ export function formatUstockReport({ stock, news, today }) {
 function formatTradingDayReport({ stock, latestQuote, trades, news }) {
   const tradeAmount = latestQuote.price * latestQuote.volume;
   const lines = [
-    `📊 ${stock.stockName} 레포트 - ${formatShortDate(latestQuote.date)}`,
+    `<b>📊 ${html(stock.stockName)} 레포트 - ${html(formatShortDate(latestQuote.date))}</b>`,
     DIVIDER,
-    `• 현재가: ${formatWon(latestQuote.price)} (${formatChangeRate(latestQuote.rate, latestQuote.change)}, ${formatSignedWon(latestQuote.change)})`
+    `• <b>현재가:</b> ${html(formatWon(latestQuote.price))} (${html(formatChangeRate(latestQuote.rate, latestQuote.change))}, ${html(formatSignedWon(latestQuote.change))})`
   ];
 
   if (stock.totalIssuedShares) {
-    lines.push(`• 시가총액: ${formatLargeKrw(latestQuote.price * stock.totalIssuedShares)}`);
+    lines.push(`• <b>시가총액:</b> ${html(formatLargeKrw(latestQuote.price * stock.totalIssuedShares))}`);
   }
 
   lines.push(
-    `• 거래량: ${formatInteger(latestQuote.volume)}주`,
-    `• 거래대금: ${formatShortKrw(tradeAmount)}`,
+    `• <b>거래량:</b> ${html(formatInteger(latestQuote.volume))}주`,
+    `• <b>거래대금:</b> ${html(formatShortKrw(tradeAmount))}`,
     '',
-    '[최근 체결 내역]'
+    '<b>[최근 체결 내역]</b>'
   );
 
   if (trades.length === 0) {
@@ -79,17 +79,17 @@ function formatTradingDayReport({ stock, latestQuote, trades, news }) {
   } else {
     for (const trade of trades) {
       const amount = trade.price * trade.quantity;
-      lines.push(`• ${trade.time} · ${formatWon(trade.price)} · ${formatInteger(trade.quantity)}주 · ${formatManWon(amount)}`);
+      lines.push(`• ${html(trade.time)} · ${html(formatWon(trade.price))} · ${html(formatInteger(trade.quantity))}주 · ${html(formatManWon(amount))}`);
     }
   }
 
-  lines.push('', '[최신 뉴스/공시]');
+  lines.push('', '<b>[최신 뉴스/공시]</b>');
 
   if (news.length === 0) {
     lines.push('• 없음');
   } else {
     for (const item of news) {
-      lines.push(`• ${item.date} ${item.title} (${item.source})`);
+      lines.push(`• ${html(item.date)} ${formatNewsTitle(item)} (${html(item.source)})`);
     }
   }
 
@@ -98,12 +98,12 @@ function formatTradingDayReport({ stock, latestQuote, trades, news }) {
 
 function formatNonTradingDayReport({ stock, latestQuote, today }) {
   return [
-    `📊 ${stock.stockName} 레포트 - ${formatShortDate(today)}`,
+    `<b>📊 ${html(stock.stockName)} 레포트 - ${html(formatShortDate(today))}</b>`,
     DIVIDER,
     '오늘은 비 거래일입니다.',
-    `• 최근 거래일: ${latestQuote.date}`,
-    `• 최근 기준가: ${formatWon(latestQuote.price)} (${formatChangeRate(latestQuote.rate, latestQuote.change)}, ${formatSignedWon(latestQuote.change)})`,
-    `• 최근 거래량: ${formatInteger(latestQuote.volume)}주`
+    `• <b>최근 거래일:</b> ${html(latestQuote.date)}`,
+    `• <b>최근 기준가:</b> ${html(formatWon(latestQuote.price))} (${html(formatChangeRate(latestQuote.rate, latestQuote.change))}, ${html(formatSignedWon(latestQuote.change))})`,
+    `• <b>최근 거래량:</b> ${html(formatInteger(latestQuote.volume))}주`
   ].join('\n');
 }
 
@@ -155,4 +155,23 @@ function formatChangeRate(rate, change) {
   }
 
   return normalized;
+}
+
+function formatNewsTitle(item) {
+  if (!item.url) {
+    return html(item.title);
+  }
+
+  return `<a href="${htmlAttr(item.url)}">${html(item.title)}</a>`;
+}
+
+function html(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function htmlAttr(value) {
+  return html(value).replace(/"/g, '&quot;');
 }
