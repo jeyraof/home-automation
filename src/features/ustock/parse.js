@@ -179,15 +179,47 @@ function parseDailyQuotes(lines) {
 function parseQuoteSummary(lines) {
   const price = readValueAfterLabel(lines, '기준가');
   const volume = readValueAfterLabel(lines, '거래량');
-  const changeLine = lines.find((line) => /^[+-]?[\d,]+\(<?\d+(?:\.\d+)?%\)?/.test(line));
-  const changeMatch = changeLine?.match(/^([+-]?[\d,]+)\((\d+(?:\.\d+)?%)\)$/);
+  const changeSummary = parseSummaryChange(lines);
 
   return {
     price: price && price !== '-' ? parseInteger(price) : 0,
     volume: volume && volume !== '-' ? parseInteger(volume) : 0,
-    change: changeMatch ? parseSignedInteger(changeMatch[1]) : 0,
-    rate: changeMatch ? changeMatch[2] : '0%'
+    change: changeSummary.change,
+    rate: changeSummary.rate
   };
+}
+
+function parseSummaryChange(lines) {
+  for (const line of lines) {
+    const compactMatch = line.match(/^([+-]?(?:\d{1,3}(?:,\d{3})+|\d+))\s*\(\s*([+-]?[<>]?\d+(?:\.\d+)?%)\s*\)$/);
+    if (compactMatch) {
+      return {
+        change: parseSignedInteger(compactMatch[1]),
+        rate: normalizeRate(compactMatch[2])
+      };
+    }
+  }
+
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const changeMatch = lines[index].match(/^([+-]?(?:\d{1,3}(?:,\d{3})+|\d+))\s*(?:원)?$/);
+    const rateMatch = lines[index + 1].match(/^\(\s*([+-]?[<>]?\d+(?:\.\d+)?%)\s*\)$/);
+
+    if (changeMatch && rateMatch) {
+      return {
+        change: parseSignedInteger(changeMatch[1]),
+        rate: normalizeRate(rateMatch[1])
+      };
+    }
+  }
+
+  return {
+    change: 0,
+    rate: '0%'
+  };
+}
+
+function normalizeRate(value) {
+  return normalizeSpaces(value).replace(/^([+-]?)[<>]/, '$1');
 }
 
 function parseTrades(lines) {

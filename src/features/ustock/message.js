@@ -116,27 +116,47 @@ function createQuoteFromTrades(stock) {
 
   const sameDayTrades = stock.trades.filter((trade) => trade.date === latestTrade.date);
   const visibleTradeVolume = sameDayTrades.reduce((sum, trade) => sum + trade.quantity, 0);
+  const sameDayDailyQuote = stock.dailyQuotes.find((quote) => quote.date === latestTrade.date);
 
   return {
     date: latestTrade.date,
-    price: stock.summary?.price || latestTrade.price,
-    rate: stock.summary?.rate || '0%',
-    change: stock.summary?.change || 0,
-    volume: stock.summary?.volume || visibleTradeVolume
+    price: stock.summary?.price || sameDayDailyQuote?.price || latestTrade.price,
+    rate: quoteRate(stock.summary, sameDayDailyQuote),
+    change: quoteChange(stock.summary, sameDayDailyQuote),
+    volume: stock.summary?.volume || sameDayDailyQuote?.volume || visibleTradeVolume
   };
 }
 
 function createTodayQuote(stock, todayTrades, today) {
   const latestTrade = todayTrades[0];
   const visibleTradeVolume = todayTrades.reduce((sum, trade) => sum + trade.quantity, 0);
+  const todayDailyQuote = stock.dailyQuotes.find((quote) => quote.date === today);
 
   return {
     date: today,
-    price: stock.summary?.price || latestTrade.price,
-    rate: stock.summary?.rate || '0%',
-    change: stock.summary?.change || 0,
-    volume: stock.summary?.volume || visibleTradeVolume
+    price: stock.summary?.price || todayDailyQuote?.price || latestTrade.price,
+    rate: quoteRate(stock.summary, todayDailyQuote),
+    change: quoteChange(stock.summary, todayDailyQuote),
+    volume: stock.summary?.volume || todayDailyQuote?.volume || visibleTradeVolume
   };
+}
+
+function quoteRate(summary, fallbackQuote) {
+  if (summary?.rate && summary.rate !== '0%') {
+    return summary.rate;
+  }
+
+  return fallbackQuote?.rate || summary?.rate || '0%';
+}
+
+function quoteChange(summary, fallbackQuote) {
+  const change = Number(summary?.change || 0);
+
+  if (change !== 0) {
+    return change;
+  }
+
+  return fallbackQuote?.change ?? change;
 }
 
 function formatChangeRate(rate, change) {
